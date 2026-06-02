@@ -1,0 +1,401 @@
+{
+  "agentspec_version": "26.1.0",
+  "component_type": "Flow",
+  "id": "web-scrape-agent-flow",
+  "name": "Web Scrape Agent",
+  "description": "Stateless schema-driven web data extractor \u2014 scrapes a bounded list of seed URLs via web_search and returns structured items per a caller-supplied JSON Schema.",
+  "metadata": {
+    "cinatra": {
+      "type": "flow",
+      "packageName": "@cinatra-ai/web-scrape-agent",
+      "packageVersion": "0.1.4",
+      "hitlScreens": [],
+      "llm": {
+        "preferredProvider": "openai",
+        "preferredModel": "gpt-5.5"
+      },
+      "toolboxes": [
+        "web_search"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "title": "seedUrls",
+      "type": "array",
+      "json_schema": {
+        "items": {
+          "type": "string",
+          "format": "uri"
+        },
+        "minItems": 1
+      }
+    },
+    {
+      "title": "outputSchema",
+      "type": "object"
+    },
+    {
+      "title": "instructions",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "title": "maxUrls",
+      "type": "integer",
+      "default": 50
+    },
+    {
+      "title": "followLinks",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "title": "maxDepth",
+      "type": "integer",
+      "default": 1
+    }
+  ],
+  "outputs": [
+    {
+      "title": "items",
+      "type": "array"
+    },
+    {
+      "title": "sourceUrls",
+      "type": "array",
+      "json_schema": {
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "title": "extractionNotes",
+      "type": "string"
+    },
+    {
+      "title": "failures",
+      "type": "array"
+    }
+  ],
+  "start_node": {
+    "$component_ref": "start"
+  },
+  "nodes": [
+    {
+      "$component_ref": "start"
+    },
+    {
+      "$component_ref": "extract"
+    },
+    {
+      "$component_ref": "end"
+    }
+  ],
+  "control_flow_connections": [
+    {
+      "component_type": "ControlFlowEdge",
+      "name": "start_to_extract",
+      "from_node": {
+        "$component_ref": "start"
+      },
+      "to_node": {
+        "$component_ref": "extract"
+      }
+    },
+    {
+      "component_type": "ControlFlowEdge",
+      "name": "extract_to_end",
+      "from_node": {
+        "$component_ref": "extract"
+      },
+      "to_node": {
+        "$component_ref": "end"
+      }
+    }
+  ],
+  "data_flow_connections": [
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_seedUrls_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "seedUrls",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "seedUrls"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_outputSchema_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "outputSchema",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "outputSchema"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_instructions_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "instructions",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "instructions"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_maxUrls_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "maxUrls",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "maxUrls"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_followLinks_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "followLinks",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "followLinks"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "start_maxDepth_to_extract",
+      "source_node": {
+        "$component_ref": "start"
+      },
+      "source_output": "maxDepth",
+      "destination_node": {
+        "$component_ref": "extract"
+      },
+      "destination_input": "maxDepth"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "extract_items_to_end",
+      "source_node": {
+        "$component_ref": "extract"
+      },
+      "source_output": "items",
+      "destination_node": {
+        "$component_ref": "end"
+      },
+      "destination_input": "items"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "extract_sourceUrls_to_end",
+      "source_node": {
+        "$component_ref": "extract"
+      },
+      "source_output": "sourceUrls",
+      "destination_node": {
+        "$component_ref": "end"
+      },
+      "destination_input": "sourceUrls"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "extract_extractionNotes_to_end",
+      "source_node": {
+        "$component_ref": "extract"
+      },
+      "source_output": "extractionNotes",
+      "destination_node": {
+        "$component_ref": "end"
+      },
+      "destination_input": "extractionNotes"
+    },
+    {
+      "component_type": "DataFlowEdge",
+      "name": "extract_failures_to_end",
+      "source_node": {
+        "$component_ref": "extract"
+      },
+      "source_output": "failures",
+      "destination_node": {
+        "$component_ref": "end"
+      },
+      "destination_input": "failures"
+    }
+  ],
+  "$referenced_components": {
+    "start": {
+      "component_type": "StartNode",
+      "id": "start",
+      "name": "Inputs",
+      "metadata": {
+        "cinatra": {
+          "required": [
+            "seedUrls",
+            "outputSchema",
+            "instructions"
+          ],
+          "hidden": [
+            "maxUrls",
+            "followLinks",
+            "maxDepth"
+          ]
+        }
+      },
+      "inputs": [
+        {
+          "title": "seedUrls",
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "minItems": 1
+          }
+        },
+        {
+          "title": "outputSchema",
+          "type": "object"
+        },
+        {
+          "title": "instructions",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "title": "maxUrls",
+          "type": "integer",
+          "default": 50
+        },
+        {
+          "title": "followLinks",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "title": "maxDepth",
+          "type": "integer",
+          "default": 1
+        }
+      ]
+    },
+    "extract": {
+      "component_type": "ApiNode",
+      "id": "extract",
+      "name": "Extract via /api/llm-bridge with web_search",
+      "url": "{{CINATRA_BASE_URL}}/api/llm-bridge",
+      "http_method": "POST",
+      "data": {
+        "agent_id": "web-scrape-agent",
+        "user": "{# pyagentspec-input-hint (do not remove): {{ seedUrls }} {{ outputSchema }} {{ followLinks }} #}Extract structured data from the following seed URLs using web_search.\n\nSeed URLs (JSON array): {{ seedUrls | tojson }}\n\nPer-item output schema (JSON Schema): {{ outputSchema | tojson }}\n\nExtraction instructions: {{ instructions }}\n\nBounds:\n- maxUrls (cap on total URLs visited including follow-links): {{ maxUrls }}\n- followLinks (whether to follow same-origin <a> links found on seed pages): {{ followLinks | tojson }}\n- maxDepth (link-follow depth when followLinks=true): {{ maxDepth }}\n\nReturn ONLY the JSON object specified in SKILL.md \u2014 keys: items, sourceUrls, extractionNotes, failures.",
+        "cinatra_llm": {
+          "preferredProvider": "openai",
+          "preferredModel": "gpt-5.5"
+        },
+        "toolbox_ids": [
+          "web_search"
+        ]
+      },
+      "inputs": [
+        {
+          "title": "seedUrls",
+          "type": "array"
+        },
+        {
+          "title": "outputSchema",
+          "type": "object"
+        },
+        {
+          "title": "instructions",
+          "type": "string"
+        },
+        {
+          "title": "maxUrls",
+          "type": "integer"
+        },
+        {
+          "title": "followLinks",
+          "type": "boolean"
+        },
+        {
+          "title": "maxDepth",
+          "type": "integer"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "items",
+          "type": "array"
+        },
+        {
+          "title": "sourceUrls",
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "extractionNotes",
+          "type": "string"
+        },
+        {
+          "title": "failures",
+          "type": "array"
+        }
+      ],
+      "metadata": {
+        "cinatra": {
+          "riskClass": "read_only",
+          "requiresApproval": false,
+          "packageName": "@cinatra-ai/web-scrape-agent",
+          "description": "Single ApiNode \u2192 /api/llm-bridge. Bridge auto-discovers SKILL.md from agents/cinatra/web-scrape-agent/skills/web-scrape-agent/SKILL.md (via agent_id) and injects the web_search tool via metadata.cinatra.toolboxes. The LLM uses web_search to fetch each URL and aggregates structured items per outputSchema."
+        }
+      }
+    },
+    "end": {
+      "component_type": "EndNode",
+      "id": "end",
+      "name": "End",
+      "outputs": [
+        {
+          "title": "items",
+          "type": "array"
+        },
+        {
+          "title": "sourceUrls",
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "extractionNotes",
+          "type": "string"
+        },
+        {
+          "title": "failures",
+          "type": "array"
+        }
+      ]
+    }
+  }
+}
