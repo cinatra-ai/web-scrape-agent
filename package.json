@@ -1,6 +1,6 @@
 {
   "name": "@cinatra-ai/web-scrape-agent",
-  "version": "0.1.4",
+  "version": "0.1.0",
   "license": "Apache-2.0",
   "description": "Stateless schema-driven web data extractor — scrapes a bounded list of seed URLs via web_search and returns structured items per a caller-supplied JSON Schema.",
   "type": "module",
