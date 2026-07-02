@@ -21,6 +21,7 @@
     "riskLevel": "low",
     "hasApprovalGates": true,
     "toolAccess": [],
-    "ownerOrgId": null
+    "ownerOrgId": null,
+    "consumes": []
   }
 }
