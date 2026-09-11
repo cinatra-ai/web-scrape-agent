@@ -58,7 +58,8 @@
   "outputs": [
     {
       "title": "items",
-      "type": "array"
+      "type": "array",
+      "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
     },
     {
       "title": "sourceUrls",
@@ -75,7 +76,24 @@
     },
     {
       "title": "failures",
-      "type": "array"
+      "type": "array",
+      "json_schema": {
+        "items": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "error"
+          ]
+        }
+      }
     }
   ],
   "start_node": {
@@ -340,7 +358,8 @@
       "outputs": [
         {
           "title": "items",
-          "type": "array"
+          "type": "array",
+          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
         },
         {
           "title": "sourceUrls",
@@ -357,7 +376,24 @@
         },
         {
           "title": "failures",
-          "type": "array"
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url",
+                "error"
+              ]
+            }
+          }
         }
       ],
       "metadata": {
@@ -376,7 +412,8 @@
       "outputs": [
         {
           "title": "items",
-          "type": "array"
+          "type": "array",
+          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
         },
         {
           "title": "sourceUrls",
@@ -393,7 +430,24 @@
         },
         {
           "title": "failures",
-          "type": "array"
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url",
+                "error"
+              ]
+            }
+          }
         }
       ]
     }
