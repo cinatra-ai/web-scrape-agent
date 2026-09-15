@@ -59,7 +59,13 @@
     {
       "title": "items",
       "type": "array",
-      "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
+      "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so the declared item schema is an open object (additional properties allowed) rather than a fixed member set.",
+      "json_schema": {
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
     },
     {
       "title": "sourceUrls",
@@ -332,7 +338,12 @@
       "inputs": [
         {
           "title": "seedUrls",
-          "type": "array"
+          "type": "array",
+          "json_schema": {
+            "items": {
+              "type": "string"
+            }
+          }
         },
         {
           "title": "outputSchema",
@@ -359,7 +370,13 @@
         {
           "title": "items",
           "type": "array",
-          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
+          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so the declared item schema is an open object (additional properties allowed) rather than a fixed member set.",
+          "json_schema": {
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
         },
         {
           "title": "sourceUrls",
@@ -413,7 +430,13 @@
         {
           "title": "items",
           "type": "array",
-          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so no fixed member set is declared here."
+          "description": "Intentionally free-form: each item conforms to the caller-supplied `outputSchema` input (an arbitrary per-call JSON Schema) plus an always-added `sourceUrl` string, so the declared item schema is an open object (additional properties allowed) rather than a fixed member set.",
+          "json_schema": {
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
         },
         {
           "title": "sourceUrls",
