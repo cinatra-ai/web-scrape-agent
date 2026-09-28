@@ -37,7 +37,7 @@ test("(14) the schema comes from an artifact or a file", () => {
     assert.deepEqual(source.json_schema, {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["artifact", "file"] },
+        type: { type: "string", enum: ["artifact"] },
         ref: { type: "string" },
       },
       required: ["type", "ref"],
@@ -52,7 +52,7 @@ test("(14) the schema comes from an artifact or a file", () => {
   const system = extract.data.system;
   assert.match(system, /When outputSchema is empty, the schema is the text in schemaText/, "the step never takes the schema that was read");
   assert.doesNotMatch(system, /artifact_representation_get/, "the step names a tool it cannot reach");
-  assert.match(system, /A schema file is not read yet/, "the step does not say that a file is not read");
+  assert.match(system, /A schema file becomes such an artifact when it is uploaded to the Artifacts library/, "the step does not say how a schema file is given");
   assert.match(system, /The schema is read for you before this step; you call no tool to read it\./, "the tool discipline still asks the model to read the schema");
   assert.match(system, /verbatim\*\* \(when it is empty, the schema in `schemaText`\)/, "the extraction rule ignores the schema that was read");
   assert.ok(
@@ -103,7 +103,7 @@ const PASSTHROUGH = "/api/agents/passthrough";
 // host's src/lib/extension-scoped-tools.ts.
 const PASSTHROUGH_TOOLS = ["extension_data", "extension_tool", "artifacts_list", "artifacts_get", "artifact_content_read"];
 const SCHEMA_ROAD =
-  '{% if outputSchema %}given{% elif outputSchemaSource and outputSchemaSource.type == "artifact" %}artifact{% elif outputSchemaSource and outputSchemaSource.type == "file" %}file{% else %}given{% endif %}';
+  '{% if outputSchema %}given{% elif outputSchemaSource and outputSchemaSource.type == "artifact" %}artifact{% else %}given{% endif %}';
 
 /** The node ids a run passes, from `start`, when `schema_road` renders `road`. */
 function walk(road) {
@@ -168,19 +168,29 @@ test("(14) a schema artifact is read before the scrape", () => {
   );
 });
 
-test("(14) a schema file ends the run in plain words and never scrapes", () => {
-  assert.equal(refs.schema_source?.mapping?.file, "file");
-  const ids = walk("file");
-  assert.deepEqual(ids, ["start", "schema_road", "schema_source", "schema_not_read", "end"]);
+test("(14) a schema file is given as the artifact it becomes when it is uploaded", () => {
+  assert.deepEqual(refs.schema_source.branches, ["default", "artifact"]);
+  assert.deepEqual(refs.schema_source.mapping, { artifact: "artifact" });
+  assert.equal("schema_not_read" in refs, false, "the ending for a file source is still declared");
   assert.deepEqual(
-    ids.filter((id) => String(refs[id]?.url ?? "").includes(LLM_BRIDGE)),
+    (oas.nodes ?? []).map((n) => n.$component_ref).filter((id) => !(id in refs)),
     [],
-    "a file source still scrapes",
+    "the flow names a node it does not declare",
   );
-  assert.ok(refs.schema_not_read.message.includes("a schema file is not read yet"), "the ending does not say why");
+  assert.deepEqual(
+    (oas.control_flow_connections ?? [])
+      .filter((e) => e.from_branch === "file" || !(e.to_node.$component_ref in refs))
+      .map((e) => e.name),
+    [],
+    "a control edge still takes a file road or leads to an undeclared node",
+  );
+  assert.ok(!JSON.stringify(oas).includes("not read yet"), "the flow still says a schema file is not read yet");
   for (const inputs of [start.inputs, oas.inputs]) {
     const source = inputs.find((i) => i.title === "outputSchemaSource");
-    assert.ok(source.description.includes("A schema file is not read yet"), "the source does not say that a file is not read");
+    assert.ok(
+      source.description.includes("A schema file becomes such an artifact when it is uploaded to the Artifacts library"),
+      "the source does not say how a schema file is given",
+    );
   }
   for (const outputs of [refs.end.outputs, oas.outputs]) {
     for (const o of outputs) assert.ok("default" in o, `the output ${o.title} has no default`);
