@@ -48,13 +48,13 @@ test("(14) the schema comes from an artifact or a file", () => {
     assert.deepEqual(schema.default, {}, "the raw schema is still demanded up front");
   }
   assert.deepEqual(required, ["seedUrls", "outputSchemaSource", "instructions"]);
-  assert.deepEqual(hidden, ["maxUrls", "followLinks", "maxDepth", "outputSchema"]);
+  assert.deepEqual(hidden, ["maxUrls", "followLinks", "maxDepth", "outputSchema", "cinatra_run_id"]);
   const system = extract.data.system;
-  assert.match(system, /When outputSchema is empty, read the schema from outputSchemaSource first/, "the step never reads the source");
-  assert.match(system, /for type "artifact" call artifact_representation_get with the ref/);
-  assert.match(system, /for type "file" read the file the ref names/);
-  assert.match(system, /The only exception is that one schema read[^\n]*artifact_representation_get[^\n]*read the file its ref names/, "the tool discipline forbids the schema read");
-  assert.match(system, /verbatim\*\* \(when it is empty, the schema read from `outputSchemaSource`\)/, "the extraction rule ignores the schema read from the source");
+  assert.match(system, /When outputSchema is empty, the schema is the text in schemaText/, "the step never takes the schema that was read");
+  assert.doesNotMatch(system, /artifact_representation_get/, "the step names a tool it cannot reach");
+  assert.match(system, /A schema file is not read yet/, "the step does not say that a file is not read");
+  assert.match(system, /The schema is read for you before this step; you call no tool to read it\./, "the tool discipline still asks the model to read the schema");
+  assert.match(system, /verbatim\*\* \(when it is empty, the schema in `schemaText`\)/, "the extraction rule ignores the schema that was read");
   assert.ok(
     (oas.data_flow_connections ?? []).some(
       (e) =>
@@ -95,4 +95,121 @@ test("(14) the flow and the start node declare the same inputs", () => {
     start.inputs.map((i) => i.title),
   );
   assert.deepEqual(oas.inputs, start.inputs, "the flow and the start node describe an input differently");
+});
+
+const LLM_BRIDGE = "/api/llm-bridge";
+const PASSTHROUGH = "/api/agents/passthrough";
+// The tools the host's deterministic passthrough serves, as declared in the
+// host's src/lib/extension-scoped-tools.ts.
+const PASSTHROUGH_TOOLS = ["extension_data", "extension_tool", "artifacts_list", "artifacts_get", "artifact_content_read"];
+const SCHEMA_ROAD =
+  '{% if outputSchema %}given{% elif outputSchemaSource and outputSchemaSource.type == "artifact" %}artifact{% elif outputSchemaSource and outputSchemaSource.type == "file" %}file{% else %}given{% endif %}';
+
+/** The node ids a run passes, from `start`, when `schema_road` renders `road`. */
+function walk(road) {
+  const edges = oas.control_flow_connections ?? [];
+  const ids = ["start"];
+  let at = "start";
+  while (at !== "end" && ids.length < 20) {
+    const out = edges.filter((e) => e.from_node.$component_ref === at);
+    let next;
+    if (refs[at]?.component_type === "BranchingNode") {
+      const branch = refs[at].mapping?.[road] ?? "default";
+      next = out.filter((e) => e.from_branch === branch);
+    } else {
+      next = out;
+    }
+    assert.equal(next.length, 1, `node ${at} has ${next.length} way(s) on for the road ${road}`);
+    at = next[0].to_node.$component_ref;
+    ids.push(at);
+  }
+  return ids;
+}
+
+test("(14) a schema handed over directly never reaches the read", () => {
+  assert.equal(refs.schema_road?.template, SCHEMA_ROAD, "the road is not chosen by the schema and its source");
+  assert.ok(!("given" in (refs.schema_source.mapping ?? {})), "a given schema is mapped to a branch");
+  const ids = walk("given");
+  assert.deepEqual(ids, ["start", "schema_road", "schema_source", "extract", "end"]);
+  assert.deepEqual(
+    ids.filter((id) => refs[id]?.component_type === "ApiNode" && String(refs[id].url).includes(PASSTHROUGH)),
+    [],
+    "a given schema is read again",
+  );
+});
+
+test("(14) a schema artifact is read before the scrape", () => {
+  assert.equal(refs.schema_source?.mapping?.artifact, "artifact");
+  assert.deepEqual(walk("artifact"), ["start", "schema_road", "schema_source", "schema_ref", "read_schema", "extract", "end"]);
+  assert.equal(refs.schema_ref.template, "{{ outputSchemaSource.ref }}");
+  const read = refs.read_schema;
+  assert.ok(read.url.endsWith("/api/agents/passthrough"), "the read does not go through the passthrough");
+  assert.deepEqual(read.data, {
+    tool: "artifact_content_read",
+    input: { artifactId: "{{ schemaArtifactId }}" },
+    agent_run_id: "{{ cinatra_run_id }}",
+  });
+  assert.ok(
+    (oas.data_flow_connections ?? []).some(
+      (e) =>
+        e.source_node.$component_ref === "read_schema" &&
+        e.source_output === "text" &&
+        e.destination_node.$component_ref === "extract" &&
+        e.destination_input === "schemaText",
+    ),
+    "the schema that was read never reaches the step",
+  );
+  const schemaText = extract.inputs.find((i) => i.title === "schemaText");
+  assert.equal(schemaText?.default, "", "the step has no schema text when nothing was read");
+  const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+  assert.ok(
+    (pkg.cinatra.dependencies ?? []).some((d) => d.kind === "artifact"),
+    "the package declares no artifact kind, so the read is not admitted",
+  );
+});
+
+test("(14) a schema file ends the run in plain words and never scrapes", () => {
+  assert.equal(refs.schema_source?.mapping?.file, "file");
+  const ids = walk("file");
+  assert.deepEqual(ids, ["start", "schema_road", "schema_source", "schema_not_read", "end"]);
+  assert.deepEqual(
+    ids.filter((id) => String(refs[id]?.url ?? "").includes(LLM_BRIDGE)),
+    [],
+    "a file source still scrapes",
+  );
+  assert.ok(refs.schema_not_read.message.includes("a schema file is not read yet"), "the ending does not say why");
+  for (const inputs of [start.inputs, oas.inputs]) {
+    const source = inputs.find((i) => i.title === "outputSchemaSource");
+    assert.ok(source.description.includes("A schema file is not read yet"), "the source does not say that a file is not read");
+  }
+  for (const outputs of [refs.end.outputs, oas.outputs]) {
+    for (const o of outputs) assert.ok("default" in o, `the output ${o.title} has no default`);
+  }
+});
+
+test("(14) every tool a step's text names is one the flow can reach", () => {
+  const offenders = new Set();
+  const texts = [];
+  for (const comp of Object.values(refs)) {
+    if (comp?.component_type !== "ApiNode") continue;
+    for (const text of [comp.data?.system, comp.data?.user]) if (typeof text === "string") texts.push(text);
+    if (!String(comp.url).includes(LLM_BRIDGE)) continue;
+    const tools = new Set(comp.data?.toolbox_ids ?? []);
+    for (const text of [comp.data?.system ?? "", comp.data?.user ?? ""]) {
+      for (const line of text.split("\n")) {
+        // A prohibition excuses only its own sentence, never a call named
+        // beside it on the same line.
+        for (const sentence of line.split(/(?<=[.!?])\s+/)) {
+          if (sentence.includes("Do not call") || sentence.includes("Do NOT call")) continue;
+          for (const token of sentence.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? []) if (!tools.has(token)) offenders.add(token);
+        }
+      }
+    }
+  }
+  assert.deepEqual([...offenders], [], "a step's text names a tool its node cannot reach");
+  for (const text of texts) assert.ok(!text.includes("read the file"), "a step's text asks for a file read");
+  for (const comp of Object.values(refs)) {
+    if (comp?.component_type !== "ApiNode" || !String(comp.url).includes(PASSTHROUGH)) continue;
+    assert.ok(PASSTHROUGH_TOOLS.includes(comp.data?.tool), `${comp.id} calls ${comp.data?.tool}, which the passthrough does not serve`);
+  }
 });
